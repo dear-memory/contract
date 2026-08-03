@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dear Memory | 계약서 생성기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --cream:#FAFAF9;
+    --card:#FFFFFF;
+    --line:#E2E2E0;
+    --ink:#1A1A1A;
+    --ink-soft:#5C5C5A;
+    --accent:#6E8B80;
+    --accent-deep:#4F6A60;
+    --accent-tint:#EEF3F1;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--cream);
+    color:var(--ink);
+    font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
+    font-size:14px;
+    word-break:keep-all;
+  }
+  .app{
+    display:grid;
+    grid-template-columns:380px 1fr;
+    min-height:100vh;
+  }
+
+  /* ---- 왼쪽 입력 패널 ---- */
+  .panel{
+    background:var(--card);
+    border-right:1px solid var(--line);
+    padding:28px 26px 60px;
+    overflow-y:auto;
+    max-height:100vh;
+  }
+  .panel .brand{
+    font-family:'Cormorant Garamond',serif;
+    font-style:italic;font-weight:600;
+    font-size:14px;letter-spacing:0.25em;
+    color:var(--ink);text-transform:uppercase;
+  }
+  .panel h1{font-size:19px;font-weight:700;margin-top:8px;}
+  .panel .sub{font-size:12.5px;color:var(--ink-soft);margin-top:6px;margin-bottom:20px;}
+
+  .group{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);}
+  .group:first-of-type{border-top:none;padding-top:0;margin-top:0;}
+  .group-title{font-size:12.5px;font-weight:700;color:var(--accent-deep);margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+  .group-title .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);}
+
+  .row{display:flex;gap:8px;}
+  .row .field{flex:1;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;}
+  .field input, .field textarea{
+    width:100%;
+    padding:9px 10px;
+    border:1px solid var(--line);
+    border-radius:5px;
+    font-family:inherit;
+    font-size:13px;
+    color:var(--ink);
+    background:#fff;
+  }
+  .field textarea{resize:vertical;min-height:54px;line-height:1.5;}
+  .field input:focus, .field textarea:focus{outline:none;border-color:var(--accent);}
+
+  .btn-row{margin-top:28px;display:flex;flex-direction:column;gap:10px;}
+  .btn{
+    padding:13px;border-radius:6px;border:none;
+    font-family:inherit;font-size:14px;font-weight:700;
+    cursor:pointer;
+  }
+  .btn-pdf{background:var(--ink);color:#fff;}
+  .btn-jpg{background:#fff;color:var(--ink);border:1px solid var(--ink);}
+  .btn:active{opacity:0.85;}
+
+  /* ---- 오른쪽 미리보기 ---- */
+  .preview-wrap{
+    padding:40px;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    overflow:auto;
+  }
+  #doc{
+    width:794px;
+    min-height:1050px;
+    background:#fff;
+    box-shadow:0 4px 24px rgba(0,0,0,0.06);
+    padding:64px 64px 48px;
+    font-family:'Pretendard',sans-serif;
+    color:#1A1A1A;
+  }
+
+  #doc .doc-header{
+    text-align:center;
+    padding-bottom:28px;
+    border-bottom:1px solid #EDEDEB;
+    margin-bottom:28px;
+  }
+  #doc .doc-brand{
+    font-family:'Cormorant Garamond',serif;
+    font-style:italic;font-weight:600;
+    font-size:15px;letter-spacing:0.32em;
+    text-transform:uppercase;
+    color:#1A1A1A;
+  }
+  #doc .doc-title{
+    font-size:26px;
+    font-weight:700;
+    letter-spacing:0.02em;
+    margin-top:12px;
+  }
+  #doc .doc-date{
+    margin-top:10px;
+    font-size:13.5px;
+    color:#8A8A87;
+    letter-spacing:0.02em;
+  }
+
+  #doc .doc-parties{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0 32px;
+    margin-bottom:32px;
+  }
+  #doc .party-label{
+    font-size:11.5px;font-weight:700;color:#6E8B80;
+    letter-spacing:0.12em;margin-bottom:10px;
+  }
+  #doc .party-name{font-size:16.5px;font-weight:700;margin-bottom:6px;}
+  #doc .party-sub{font-size:13.5px;color:#6B6B68;line-height:1.8;}
+
+  #doc .doc-section{margin-bottom:30px;}
+  #doc .doc-section-title{
+    display:flex;align-items:center;gap:8px;
+    font-size:14px;font-weight:700;
+    letter-spacing:0.03em;
+    margin-bottom:14px;
+    color:#1A1A1A;
+  }
+  #doc .doc-section-title .dot{width:5px;height:5px;border-radius:50%;background:#6E8B80;flex:none;}
+
+  #doc .info-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px 24px;
+    margin-bottom:18px;
+  }
+  #doc .info-item{display:flex;flex-direction:column;gap:4px;}
+  #doc .info-item.full{grid-column:1 / -1;}
+  #doc .info-k{font-size:13.5px;font-weight:700;color:#6B6B68;letter-spacing:0.02em;}
+  #doc .info-v{font-size:15px;color:#1A1A1A;line-height:1.6;}
+
+  #doc .price-table{
+    border-top:1px solid #1A1A1A;
+    border-bottom:1px solid #1A1A1A;
+  }
+  #doc .price-row{
+    display:flex;justify-content:space-between;align-items:flex-start;
+    padding:13px 2px;
+    font-size:14.5px;
+    border-bottom:1px solid #EDEDEB;
+    white-space:pre-line;
+    gap:16px;
+  }
+  #doc .price-row:last-child{border-bottom:none;}
+  #doc .price-row.discount{color:#8A8A87;font-size:13.5px;}
+  #doc .price-row.total{
+    font-weight:700;font-size:15.5px;
+    background:#FAFAF9;
+    margin:0 -2px;padding:15px 2px;
+  }
+  #doc .num{text-align:right;white-space:nowrap;flex:none;}
+
+  #doc .note{
+    font-size:13px;
+    color:#5C5C5A;
+    line-height:2;
+    margin-top:14px;
+    padding:14px 16px;
+    background:#FAFAF9;
+    border-left:2px solid #6E8B80;
+    border-radius:2px;
+    white-space:pre-line;
+  }
+
+  #doc .bank{
+    border:1px solid #EDEDEB;
+    border-radius:8px;
+    overflow:hidden;
+  }
+  #doc .bank-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:14px 18px;
+    font-size:14.5px;
+    border-bottom:1px solid #EDEDEB;
+  }
+  #doc .bank-row:last-child{border-bottom:none;}
+  #doc .bank-row .k{color:#6B6B68;font-weight:700;letter-spacing:0.01em;}
+  #doc .bank-row .v{color:#1A1A1A;font-weight:600;}
+  #doc .bank-row .v.mono{font-family:'Pretendard',sans-serif;font-size:14.5px;font-weight:700;letter-spacing:0.03em;}
+
+  #doc .sign{
+    margin-top:40px;
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:6px;
+    font-size:15px;font-weight:700;
+  }
+  #doc .sign img{display:block;}
+  #doc .sign .stamp{height:46px;width:auto;margin-left:2px;}
+  #doc .sign .signature{height:34px;width:auto;margin-left:-6px;opacity:0.9;}
+  #doc .footer-bar{
+    margin-top:32px;padding-top:16px;border-top:1px solid #EDEDEB;
+    text-align:center;font-size:12px;color:#9A9A96;line-height:1.8;
+  }
+
+  @media (max-width:900px){
+    .app{grid-template-columns:1fr;}
+    .panel{max-height:none;border-right:none;border-bottom:1px solid var(--line);}
+    .preview-wrap{padding:20px;}
+    #doc{width:100%;padding:40px 28px;}
+    #doc .doc-parties, #doc .info-grid{grid-template-columns:1fr;}
+  }
+  @media print{
+    body{background:#fff;}
+    .panel{display:none;}
+    .app{display:block;}
+    .preview-wrap{padding:0;display:block;}
+    #doc{
+      box-shadow:none;
+      width:100%;
+      margin:0;
+      padding:20px 30px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- 입력 패널 -->
+  <div class="panel">
+    <div class="brand">Dear Memory</div>
+    <h1>계약서 생성기</h1>
+    <div class="sub">정보를 입력하면 오른쪽에 계약서가 바로 완성돼요.</div>
+
+    <div class="group">
+      <div class="group-title"><span class="dot"></span>계약 기본 정보</div>
+      <div class="field"><label>계약 날짜</label><input type="date" id="contractDate"></div>
+      <div class="row">
+        <div class="field"><label>신랑 성함</label><input type="text" id="groomName" placeholder="이충효"></div>
+        <div class="field"><label>신부 성함</label><input type="text" id="brideName" placeholder="이예슬"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>신랑 연락처</label><input type="text" id="groomPhone" placeholder="010-0000-0000"></div>
+        <div class="field"><label>신부 연락처</label><input type="text" id="bridePhone" placeholder="010-0000-0000"></div>
+      </div>
+      <div class="field"><label>이메일</label><input type="text" id="email" placeholder="example@naver.com"></div>
+    </div>
+
+    <div class="group">
+      <div class="group-title"><span class="dot"></span>예식 정보</div>
+      <div class="row">
+        <div class="field"><label>예식 날짜</label><input type="date" id="weddingDate"></div>
+        <div class="field"><label>예식 시간</label><input type="text" id="weddingTime" placeholder="오후 6시 30분"></div>
+      </div>
+      <div class="field"><label>웨딩홀</label><input type="text" id="weddingHall" placeholder="구로 지타워컨벤션"></div>
+    </div>
+
+    <div class="group">
+      <div class="group-title"><span class="dot"></span>상품 &amp; 금액</div>
+      <div class="field"><label>상품 내용</label><textarea id="productDesc" placeholder="화보형 (2인 촬영)&#10;- 15x12인치 80p 1권&#10;- 12x8인치 40p 2권 총 3권"></textarea></div>
+      <div class="field"><label>상품 금액</label><input type="text" id="productPrice" placeholder="1450000" inputmode="numeric"></div>
+      <div class="field"><label>할인 내용</label><textarea id="discountDesc" placeholder="짝꿍 : 5만원&#10;포플동의 : 10만원"></textarea></div>
+      <div class="field"><label>할인 금액 (마이너스 없이 숫자만)</label><input type="text" id="discountAmount" placeholder="150000" inputmode="numeric"></div>
+    </div>
+
+    <div class="group">
+      <div class="group-title"><span class="dot"></span>계약금</div>
+      <div class="row">
+        <div class="field"><label>계약금 납부일</label><input type="date" id="depositDate"></div>
+        <div class="field"><label>계약금</label><input type="text" id="depositAmount" placeholder="300000" inputmode="numeric"></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-pdf" onclick="downloadPDF(this)">PDF로 다운로드</button>
+      <button class="btn btn-jpg" onclick="downloadJPG(this)">JPG로 다운로드</button>
+    </div>
+  </div>
+
+  <!-- 오른쪽 미리보기 -->
+  <div class="preview-wrap">
+    <div id="doc">
+      <div class="doc-header">
+        <div class="doc-brand">Dear Memory</div>
+        <div class="doc-title">본식스냅 계약서</div>
+        <div class="doc-date" id="out-contractDate">계약 날짜 : -</div>
+      </div>
+
+      <div class="doc-parties">
+        <div>
+          <div class="party-label">수신 RECEIVER</div>
+          <div class="party-name" id="out-names">-</div>
+          <div class="party-sub" id="out-email">-</div>
+          <div class="party-sub" id="out-phones">-</div>
+        </div>
+        <div>
+          <div class="party-label">발신 SENDER</div>
+          <div class="party-name">디어메모리</div>
+          <div class="party-sub">dearmemory@kakao.com</div>
+          <div class="party-sub">010-9047-4373 / 한민규</div>
+        </div>
+      </div>
+
+      <div class="doc-section">
+        <div class="doc-section-title"><span class="dot"></span>예식 &amp; 상품 정보</div>
+        <div class="info-grid">
+          <div class="info-item"><span class="info-k">날짜 / 시간</span><span class="info-v" id="out-weddingDateTime">-</span></div>
+          <div class="info-item"><span class="info-k">웨딩홀</span><span class="info-v" id="out-weddingHall">-</span></div>
+          <div class="info-item full"><span class="info-k">상품</span><span class="info-v" id="out-productDesc" style="white-space:pre-line;">-</span></div>
+        </div>
+        <div class="price-table">
+          <div class="price-row"><span>상품 금액</span><span class="num" id="out-productPrice">-</span></div>
+          <div class="price-row discount"><span id="out-discountDesc">할인</span><span class="num" id="out-discountAmount">-</span></div>
+          <div class="price-row total"><span>합&nbsp;&nbsp;&nbsp;&nbsp;계 (VAT 포함)</span><span class="num" id="out-total">-</span></div>
+        </div>
+        <div class="note">*본식 주 월요일 최종 안내, 확인 문자 전송
+*잔금은 본식 주 금요일까지 입금 (현금영수증 발행)
+*후기, 추가 할인 등은 잔금 때 적용 또는 페이백 진행</div>
+      </div>
+
+      <div class="doc-section">
+        <div class="doc-section-title"><span class="dot"></span>계약 내용</div>
+        <div class="price-table">
+          <div class="price-row"><span>상품 금액 (할인 적용)</span><span class="num" id="out-total2">-</span></div>
+          <div class="price-row"><span id="out-depositLabel">계약금</span><span class="num" id="out-depositAmount">-</span></div>
+          <div class="price-row total"><span>잔&nbsp;&nbsp;금 (VAT 포함)</span><span class="num" id="out-balance">-</span></div>
+        </div>
+      </div>
+
+      <div class="doc-section">
+        <div class="doc-section-title"><span class="dot"></span>입금 계좌 정보</div>
+        <div class="bank">
+          <div class="bank-row"><span class="k">은행 (Bank)</span><span class="v">국민은행</span></div>
+          <div class="bank-row"><span class="k">계좌번호 (Account)</span><span class="v mono">216502-04-211201</span></div>
+          <div class="bank-row"><span class="k">예금주 (Beneficiary)</span><span class="v">한민규</span></div>
+        </div>
+      </div>
+
+      <div class="sign"><span>DEAR MEMORY&nbsp;&nbsp;&nbsp;&nbsp;대표&nbsp;&nbsp;한&nbsp;민&nbsp;규</span><img class="signature" src="data:image/png;base64,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" alt="서명"></div>
+
+      <div class="footer-bar">
+        디어메모리&nbsp;&nbsp;사업자등록번호: 424-26-00375&nbsp;&nbsp;대표 한민규&nbsp;&nbsp;010-9047-4373<br>
+        www.dearmemory.co.kr&nbsp;/&nbsp;dearmemory@kakao.com
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function fmt(n){
+    if(!n) return '0';
+    return Number(n).toLocaleString('ko-KR');
+  }
+  function fmtDate(d){
+    if(!d) return '-';
+    var parts = d.split('-');
+    return parts[0] + '년 ' + parseInt(parts[1]) + '월 ' + parseInt(parts[2]) + '일';
+  }
+  function weekday(d){
+    if(!d) return '';
+    var days = ['일','월','화','수','목','금','토'];
+    var date = new Date(d);
+    return '(' + days[date.getDay()] + '요일)';
+  }
+
+  function update(){
+    var contractDate = document.getElementById('contractDate').value;
+    var groomName = document.getElementById('groomName').value || '-';
+    var brideName = document.getElementById('brideName').value || '-';
+    var groomPhone = document.getElementById('groomPhone').value;
+    var bridePhone = document.getElementById('bridePhone').value;
+    var email = document.getElementById('email').value || '-';
+    var weddingDate = document.getElementById('weddingDate').value;
+    var weddingTime = document.getElementById('weddingTime').value || '-';
+    var weddingHall = document.getElementById('weddingHall').value || '-';
+    var productDesc = document.getElementById('productDesc').value || '-';
+    var productPrice = parseInt(document.getElementById('productPrice').value) || 0;
+    var discountDesc = document.getElementById('discountDesc').value || '';
+    var discountAmount = parseInt(document.getElementById('discountAmount').value) || 0;
+    var depositDate = document.getElementById('depositDate').value;
+    var depositAmount = parseInt(document.getElementById('depositAmount').value) || 0;
+
+    var total = productPrice - discountAmount;
+    var balance = total - depositAmount;
+
+    document.getElementById('out-contractDate').textContent = '계약 날짜 : ' + (contractDate ? fmtDate(contractDate) : '-');
+    document.getElementById('out-names').textContent = groomName + ', ' + brideName + ' 신랑신부님';
+    document.getElementById('out-email').textContent = email;
+    document.getElementById('out-phones').textContent = (groomPhone||'-') + ' / ' + (bridePhone||'-');
+
+    document.getElementById('out-weddingDateTime').textContent =
+      (weddingDate ? fmtDate(weddingDate) : '-') + '\n' + weddingTime + '식 ' + weekday(weddingDate);
+    document.getElementById('out-weddingHall').textContent = weddingHall;
+    document.getElementById('out-productDesc').textContent = productDesc;
+    document.getElementById('out-productPrice').textContent = fmt(productPrice);
+
+    document.getElementById('out-discountDesc').textContent = discountDesc || '할인';
+    document.getElementById('out-discountAmount').textContent = discountAmount ? '-' + fmt(discountAmount) : '-';
+
+    document.getElementById('out-total').textContent = fmt(total);
+    document.getElementById('out-total2').textContent = fmt(total);
+
+    document.getElementById('out-depositLabel').textContent = '계약금' + (depositDate ? '(' + fmtDate(depositDate) + ')' : '');
+    document.getElementById('out-depositAmount').textContent = depositAmount ? '-' + fmt(depositAmount) : '-';
+
+    document.getElementById('out-balance').textContent = fmt(balance);
+  }
+
+  document.querySelectorAll('input, textarea').forEach(function(el){
+    el.addEventListener('input', update);
+  });
+
+  // 기본값: 오늘 날짜
+  document.getElementById('contractDate').value = new Date().toISOString().slice(0,10);
+
+  // 고객 예약폼에서 넘어온 정보 자동 채우기
+  (function(){
+    var params = new URLSearchParams(window.location.search);
+    var map = {
+      groomName:'groomName', brideName:'brideName',
+      groomPhone:'groomPhone', bridePhone:'bridePhone',
+      email:'email', weddingDate:'weddingDate',
+      weddingTime:'weddingTime', weddingHall:'weddingHall',
+      product:'productDesc', productPrice:'productPrice',
+      discountDesc:'discountDesc', discountAmount:'discountAmount'
+    };
+    Object.keys(map).forEach(function(key){
+      var val = params.get(key);
+      if (val) {
+        var el = document.getElementById(map[key]);
+        if (el) el.value = val;
+      }
+    });
+  })();
+
+  update();
+
+  function buildFileName(ext){
+    var groom = document.getElementById('groomName').value.trim() || '고객';
+    var bride = document.getElementById('brideName').value.trim() || '';
+    var dateVal = document.getElementById('contractDate').value || new Date().toISOString().slice(0,10);
+    var dateStr = dateVal.replace(/-/g, '');
+    return '디어메모리_계약서_' + groom + bride + '_' + dateStr + '.' + ext;
+  }
+
+  function downloadPDF(btn){
+    var doc = document.getElementById('doc');
+    var originalText = btn.textContent;
+    btn.textContent = '생성 중...';
+    btn.disabled = true;
+
+    html2canvas(doc, {scale:2, backgroundColor:'#ffffff', useCORS:true}).then(function(canvas){
+      var imgData = canvas.toDataURL('image/jpeg', 0.95);
+      var { jsPDF } = window.jspdf;
+
+      // 캔버스 비율에 맞춰 PDF 페이지 크기를 A4 폭 기준으로 계산 -> 항상 한 페이지로 끝남
+      var pageWidthMM = 210; // A4 너비(mm)
+      var pageHeightMM = (canvas.height / canvas.width) * pageWidthMM;
+
+      var pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [pageWidthMM, pageHeightMM]
+      });
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, pageWidthMM, pageHeightMM);
+      pdf.save(buildFileName('pdf'));
+
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }).catch(function(err){
+      alert('PDF 생성 중 오류가 발생했어요. 다시 시도해 주세요.');
+      btn.textContent = originalText;
+      btn.disabled = false;
+    });
+  }
+
+  function downloadJPG(){
+    var doc = document.getElementById('doc');
+    html2canvas(doc, {scale:2, backgroundColor:'#ffffff', useCORS:true}).then(function(canvas){
+      var link = document.createElement('a');
+      link.download = buildFileName('jpg');
+      link.href = canvas.toDataURL('image/jpeg', 0.95);
+      link.click();
+    });
+  }
+</script>
+
+</body>
+</html>
